@@ -1,3 +1,4 @@
+
 """Cálculo en el Aire · 4 simulaciones de Cálculo Diferencial e Integral aplicadas a la aviación.
 
 Ejecutar:  streamlit run app.py
@@ -330,8 +331,10 @@ SIMS = {
     "3 · Integral: combustible": sim_combustible,
     "4 · Integral: carga en el ala": sim_ala,
 }
-eleccion = st.sidebar.radio("Simulación", list(SIMS))
-SIMS[eleccion]()
+pestanas = st.tabs(list(SIMS))
+for pestana, simulacion in zip(pestanas, SIMS.values()):
+    with pestana:
+        simulacion()
 
 st.markdown("---")
 st.markdown(f"<div style='text-align:center;opacity:.75'>{CREDITO}</div>", unsafe_allow_html=True)
