@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cálculo en el Aire · Simulaciones de Aviación</title>
+<style>
+:root{--bg:#0b1220;--card:#131c2e;--line:#26324a;--text:#e2e8f0;--mut:#94a3b8;--a:#38bdf8;--b:#fbbf24;--c:#34d399;--r:#f87171}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+header{padding:20px 16px 4px;max-width:1100px;margin:0 auto}
+h1{margin:0;font-size:1.5rem}
+header p{margin:4px 0 0;color:var(--mut);font-size:.95rem}
+nav{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;max-width:1100px;margin:0 auto}
+nav button{flex:0 0 auto;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer;font:inherit;font-size:.9rem}
+nav button.on{background:var(--a);color:#06202e;border-color:var(--a);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:0 16px 24px}
+.panel{display:none}
+.panel.on{display:block}
+.tag{display:inline-block;font-size:.75rem;color:var(--b);border:1px solid var(--b);border-radius:6px;padding:1px 8px;margin:0 6px 6px 0}
+h2{font-size:1.15rem;margin:6px 0 4px}
+.grid{display:grid;grid-template-columns:290px 1fr;gap:16px;margin-top:10px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stack>.card{margin-top:12px}
+.ctl{margin-bottom:12px}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;color:var(--mut)}
+.ctl label b{color:var(--text);font-weight:600;white-space:nowrap}
+.ctl input[type=range]{width:100%}
+.ctl select{width:100%;padding:7px;background:#0f172a;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+.res div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.res small{display:block;color:var(--mut);font-size:.72rem}
+.res strong{font-size:1.02rem}
+.plot{height:340px;width:100%}
+.note{font-size:.9rem;color:var(--mut);margin-top:14px}
+.note b{color:var(--text)}
+.note ul{margin:6px 0 0;padding-left:20px}
+table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:6px}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500}
+footer{text-align:center;color:var(--mut);font-size:.85rem;padding:20px 16px 28px;border-top:1px solid var(--line)}
+footer strong{color:var(--text)}
+a{color:var(--a)}
+</style>
+</head>
+<body>
+<header>
+  <h1>✈️ Cálculo en el Aire</h1>
+  <p>Cuatro simulaciones de Cálculo Diferencial e Integral aplicadas a la aviación</p>
+</header>
+
+<nav>
+  <button class="on" data-p="s1">1 · Derivada: tasa de ascenso</button>
+  <button data-p="s2">2 · Optimización: máx. L/D</button>
+  <button data-p="s3">3 · Integral: combustible</button>
+  <button data-p="s4">4 · Integral: carga en el ala</button>
+</nav>
+
+<main>
+<div class="card note" style="margin-top:0">
+  <b>Aeronave de referencia: T-90 Calima</b> (entrenador básico de la FAC). Datos publicados por
+  <a href="https://www.airforce-technology.com/projects/calima-t-90-trainer-aircraft/" target="_blank" rel="noopener">Airforce Technology</a>:
+  envergadura 8,8 m · área alar 7,6 m² (AR ≈ 10,2) · peso máx. operativo 998 kg · motor Lycoming IO-390 de 210 hp · altitud máx. 18.000 ft · crucero 296 km/h.<br>
+  <b>Supuestos didácticos</b> (no publicados): C<sub>D0</sub>, e, la constante de ascenso τ y los flujos de combustible (gasolina de aviación 100LL). Ajusta los controles para otra aeronave.
+</div>
+<!-- ============ SIM 1 ============ -->
+<section class="panel on" id="s1">
+  <span class="tag">Cálculo diferencial</span><span class="tag">Definición de derivada</span>
+  <h2>Tasa de ascenso como derivada de la altitud</h2>
+  <p class="note" style="margin-top:0">Un avión asciende hacia su techo de servicio con h(t) = H·(1 − e<sup>−t/τ</sup>). La tasa de ascenso (ROC) es h′(t). Reduce Δt y mira cómo la pendiente de la secante se acerca a la de la tangente. Con H = 20.000 ft y τ = 18 min el modelo llega a ≈ 18.000 ft hacia los 41 min (ROC inicial ≈ 1.100 ft/min, supuesto del modelo).</p>
+  <div class="grid">
+    <div class="card" id="c1"></div>
+    <div class="stack">
+      <div class="res" id="r1"></div>
+      <div class="card"><div class="plot" id="p1a"></div></div>
+      <div class="card"><div class="plot" id="p1b"></div></div>
+    </div>
+  </div>
+  <div class="card note"><b>Qué estás viendo:</b>
+    <ul>
+      <li>h′(t₀) = lím<sub>Δt→0</sub> [h(t₀+Δt) − h(t₀)] / Δt es la rapidez vertical instantánea que marca el variómetro.</li>
+      <li>h′(t) = (H/τ)·e<sup>−t/τ</sup> decrece: el avión pierde capacidad de ascenso al acercarse al techo.</li>
+    </ul>
+    <b>Reto:</b> ¿en qué instante el ROC cae a 500 ft/min? Resuelve h′(t) = 500 y verifícalo con el control t₀.
+  </div>
+</section>
+
+<!-- ============ SIM 2 ============ -->
+<section class="panel" id="s2">
+  <span class="tag">Cálculo diferencial</span><span class="tag">Optimización</span>
+  <h2>Máxima eficiencia aerodinámica (L/D) con polar parabólica</h2>
+  <p class="note" style="margin-top:0">Con C<sub>D</sub> = C<sub>D0</sub> + k·C<sub>L</sub>² y k = 1/(π·e·AR), la eficiencia es L/D = C<sub>L</sub>/(C<sub>D0</sub> + k·C<sub>L</sub>²). El máximo ocurre donde la derivada se anula.</p>
+  <div class="grid">
+    <div class="card" id="c2"></div>
+    <div class="stack">
+      <div class="res" id="r2"></div>
+      <div class="card"><div class="plot" id="p2a"></div></div>
+      <div class="card"><div class="plot" id="p2b"></div></div>
+    </div>
+  </div>
+  <div class="card note"><b>Derivación:</b> d(L/D)/dC<sub>L</sub> = (C<sub>D0</sub> − k·C<sub>L</sub>²)/(C<sub>D0</sub> + k·C<sub>L</sub>²)² = 0 ⇒ C<sub>L</sub>* = √(C<sub>D0</sub>/k) y (L/D)<sub>máx</sub> = 1/(2√(C<sub>D0</sub>·k)).
+    <ul>
+      <li>En el óptimo la resistencia parásita es igual a la inducida: C<sub>D</sub> = 2·C<sub>D0</sub>.</li>
+      <li>Es el ángulo de planeo óptimo: la distancia máxima sin motor desde una altura h es h·(L/D)<sub>máx</sub>.</li>
+    </ul>
+    <b>Reto:</b> ¿cómo cambia (L/D)<sub>máx</sub> si duplicas el alargamiento AR? ¿Por qué los planeadores tienen alas tan largas?
+  </div>
+</section>
+
+<!-- ============ SIM 3 ============ -->
+<section class="panel" id="s3">
+  <span class="tag">Cálculo integral</span><span class="tag">Sumas de Riemann</span><span class="tag">Integración numérica</span>
+  <h2>Combustible de una misión como integral del flujo</h2>
+  <p class="note" style="margin-top:0">El flujo de combustible es ṁ(t) = F<sub>cr</sub> + (F<sub>cl</sub> − F<sub>cr</sub>)·e<sup>−t/τ</sup> (alto en ascenso, estable en crucero). El combustible total es ∫₀ᵀ ṁ(t) dt. Compara métodos numéricos con la integral exacta.</p>
+  <div class="grid">
+    <div class="card" id="c3"></div>
+    <div class="stack">
+      <div class="res" id="r3"></div>
+      <div class="card"><div class="plot" id="p3a"></div></div>
+      <div class="card"><div class="plot" id="p3b"></div></div>
+    </div>
+  </div>
+  <div class="card note"><b>Integral exacta:</b> F<sub>cr</sub>·T + (F<sub>cl</sub> − F<sub>cr</sub>)·τ·(1 − e<sup>−T/τ</sup>).
+    <ul>
+      <li>Riemann izquierda/derecha: error ∝ 1/n. Punto medio y trapecio: ∝ 1/n². Simpson: ∝ 1/n⁴ (pendiente de la gráfica de error).</li>
+      <li>Con n par en todos los métodos para poder comparar Simpson directamente.</li>
+    </ul>
+    <b>Reto:</b> ¿cuántos subintervalos necesita cada método para un error relativo menor a 0,01 %?
+  </div>
+</section>
+
+<!-- ============ SIM 4 ============ -->
+<section class="panel" id="s4">
+  <span class="tag">Cálculo integral</span><span class="tag">Integrales definidas</span><span class="tag">Aplicaciones</span>
+  <h2>Sustentación en el ala: fuerza cortante y momento flector</h2>
+  <p class="note" style="margin-top:0">La sustentación por unidad de envergadura L′(y) debe sumar n·W. La cortante es V(y) = ∫<sub>y</sub><sup>b/2</sup> L′ ds y el momento flector es M(y) = ∫<sub>y</sub><sup>b/2</sup> L′(s)(s − y) ds (se desprecia el peso del ala).</p>
+  <div class="grid">
+    <div class="card" id="c4"></div>
+    <div class="stack">
+      <div class="res" id="r4"></div>
+      <div class="card"><div class="plot" id="p4a"></div></div>
+      <div class="card"><div class="plot" id="p4b"></div></div>
+      <div class="card"><b style="font-size:.9rem">Momento en la raíz con la misma sustentación total</b><div id="t4"></div></div>
+    </div>
+  </div>
+  <div class="card note"><b>Control analítico (elíptica):</b> L′(y) = L₀·√(1 − (2y/b)²) ⇒ L₀ = 4·n·W/(π·b), centro de presión en 4/(3π)·(b/2) ≈ 0,424·(b/2) y M<sub>raíz</sub> = n·W·b/(3π).
+    <ul>
+      <li>Para la misma sustentación, la rectangular da el mayor momento en la raíz; llevar la carga hacia la raíz (taper bajo) lo reduce. Prueba taper = 0 y compara con la elíptica.</li>
+      <li>Aumentar el factor de carga n escala todo linealmente: a 3 g el ala soporta el triple de momento.</li>
+    </ul>
+    <b>Reto:</b> demuestra a mano que ∫₀¹ √(1 − u²) du = π/4 y ∫₀¹ u·√(1 − u²) du = 1/3, y compara con los valores numéricos.
+  </div>
+</section>
+</main>
+
+<footer>Diseño Vibe Coding por <strong>Ing. Hernán Quiroz</strong></footer>
+
+<script>
+/* ===================== MATEMÁTICA (independiente de la interfaz) ===================== */
+const Calc = (() => {
+  // --- Sim 1: ascenso
+  const climb = {
+    h: (t, H, tau) => H * (1 - Math.exp(-t / tau)),
+    dh: (t, H, tau) => (H / tau) * Math.exp(-t / tau)
+  };
+  // --- Sim 2: polar parabólica
+  const polar = {
+    k: (AR, e) => 1 / (Math.PI * e * AR),
+    ld: (cl, cd0, k) => cl / (cd0 + k * cl * cl),
+    dld: (cl, cd0, k) => (cd0 - k * cl * cl) / Math.pow(cd0 + k * cl * cl, 2),
+    clOpt: (cd0, k) => Math.sqrt(cd0 / k),
+    ldMax: (cd0, k) => 1 / (2 * Math.sqrt(cd0 * k))
+  };
+  // --- Sim 3: combustible
+  function integrate(method, f, a, b, n) {
+    const h = (b - a) / n; let s = 0, i;
+    switch (method) {
+      case 'left': for (i = 0; i < n; i++) s += f(a + i * h); return s * h;
+      case 'right': for (i = 1; i <= n; i++) s += f(a + i * h); return s * h;
+      case 'mid': for (i = 0; i < n; i++) s += f(a + (i + 0.5) * h); return s * h;
+      case 'trap': s = (f(a) + f(b)) / 2; for (i = 1; i < n; i++) s += f(a + i * h); return s * h;
+      case 'simpson': s = f(a) + f(b); for (i = 1; i < n; i++) s += f(a + i * h) * (i % 2 ? 4 : 2); return s * h / 3;
+    }
+    return NaN;
+  }
+  const fuel = {
+    flow: (t, Fcl, Fcr, tau) => Fcr + (Fcl - Fcr) * Math.exp(-t / tau),
+    exact: (T, Fcl, Fcr, tau) => Fcr * T + (Fcl - Fcr) * tau * (1 - Math.exp(-T / tau))
+  };
+  // --- Sim 4: ala
+  function shape(type, u, lam) {
+    if (type === 'ell') return Math.sqrt(Math.max(0, 1 - u * u));
+    if (type === 'rect') return 1;
+    return 1 - (1 - lam) * u;
+  }
+  function moments(type, lam) {
+    const N = 4000, h = 1 / N; let i0 = 0, i1 = 0;
+    for (let i = 0; i <= N; i++) {
+      const u = i * h, w = (i === 0 || i === N) ? 0.5 : 1, s = shape(type, u, lam);
+      i0 += w * s; i1 += w * u * s;
+    }
+    return { I0: i0 * h, I1: i1 * h };
+  }
+  function wing(type, lam, b, massKg, nf) {
+    const g = 9.80665, half = b / 2, N = 400, h = half / N;
+    const Ltot = nf * massKg * g;
+    const { I0, I1 } = moments(type, lam);
+    const L0 = (Ltot / 2) / (half * I0);
+    const y = [], Lp = [], V = new Array(N + 1), M = new Array(N + 1);
+    for (let i = 0; i <= N; i++) { y.push(i * h); Lp.push(L0 * shape(type, 2 * i * h / b, lam)); }
+    V[N] = 0; M[N] = 0;
+    for (let i = N - 1; i >= 0; i--) {
+      V[i] = V[i + 1] + (Lp[i] + Lp[i + 1]) / 2 * h;
+      M[i] = M[i + 1] + (V[i] + V[i + 1]) / 2 * h;
+    }
+    return { g, Ltot, L0, I0, I1, y, Lp, V, M, h, N, half, Mroot: L0 * half * half * I1, Mnum: M[0], ycp: half * I1 / I0 };
+  }
+  return { climb, polar, integrate, fuel, shape, moments, wing };
+})();
+
+/* ===================== INTERFAZ ===================== */
+if (typeof document !== 'undefined') {
+
+/* ---------- Graficador SVG propio (sin dependencias externas) ---------- */
+const Plotly = (function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  const store = {};
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  const sup = n => String(n).split('').map(c => SUP[c] || c).join('');
+  const num = v => Number(v.toPrecision(7)).toLocaleString('es-CO', { maximumFractionDigits: 8 });
+  const txt = t => (t && typeof t === 'object') ? (t.text || '') : (t || '');
+
+  function niceTicks(lo, hi, n) {
+    const span = hi - lo;
+    if (!(span > 0)) return [lo];
+    const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / mag;
+    const step = (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * mag;
+    const out = [];
+    for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toPrecision(12));
+    return out;
+  }
+  function domain(cfg, series, log, padFrac) {
+    cfg = cfg || {};
+    if (cfg.range) return cfg.range.slice();
+    let lo = Infinity, hi = -Infinity;
+    series.forEach(a => a.forEach(v => {
+      if (!isFinite(v) || (log && v <= 0)) return;
+      const t = log ? Math.log10(v) : v;
+      if (t < lo) lo = t;
+      if (t > hi) hi = t;
+    }));
+    if (!isFinite(lo)) { lo = 0; hi = 1; }
+    if (log) { lo = Math.floor(lo); hi = Math.ceil(hi); if (hi === lo) hi += 1; return [lo, hi]; }
+    const zero = cfg.rangemode === 'tozero';
+    if (zero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    if (hi === lo) hi = lo + 1;
+    const pad = (hi - lo) * padFrac;
+    return [zero && lo === 0 ? 0 : lo - pad, hi + pad];
+  }
+  function ticksFor(d, log) {
+    if (log) {
+      let t = [];
+      for (let e = Math.ceil(d[0]); e <= Math.floor(d[1]); e++) t.push([e, '10' + sup(e)]);
+      const stride = Math.ceil(t.length / 7);
+      return t.filter((_, i) => i % stride === 0);
+    }
+    return niceTicks(d[0], d[1], 6).map(v => [v, num(v)]);
+  }
+
+  function render(id, traces, layout) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    store[id] = [traces, layout];
+    layout = layout || {};
+    const W = Math.max(280, el.clientWidth || 640);
+    const xa = layout.xaxis || {}, ya = layout.yaxis || {}, y2a = layout.yaxis2 || {};
+    const xlog = xa.type === 'log', ylog = ya.type === 'log';
+    const has2 = !!layout.yaxis2 && traces.some(t => t.yaxis === 'y2');
+    const ml = 62, mr = has2 ? 66 : 18, mt = 38, pw = W - ml - mr;
+
+    const items = traces.filter(t => t.name && t.showlegend !== false);
+    const rows = []; let row = [], used = 0;
+    items.forEach(t => {
+      const w = 30 + t.name.length * 6.6 + 16;
+      if (used + w > pw && row.length) { rows.push(row); row = []; used = 0; }
+      row.push([t, used]); used += w;
+    });
+    if (row.length) rows.push(row);
+    const H = (layout.height || 340) + Math.max(0, rows.length - 1) * 20;
+    const mb = 44 + rows.length * 20, ph = H - mt - mb;
+    el.style.height = H + 'px';
+
+    const xs = [], y1s = [], y2s = [];
+    traces.forEach(t => { xs.push(t.x); (t.yaxis === 'y2' ? y2s : y1s).push(t.y); });
+    (layout.shapes || []).forEach(sh => { if (sh.type === 'rect') { xs.push([sh.x0, sh.x1]); y1s.push([sh.y0, sh.y1]); } });
+    const dx = domain(xa, xs, xlog, 0), dy = domain(ya, y1s, ylog, 0.06);
+    const dy2 = has2 ? domain(y2a, y2s, false, 0.06) : null;
+    const tf = (v, lg) => lg ? Math.log10(v) : v;
+    const TX = tv => ml + (tv - dx[0]) / (dx[1] - dx[0]) * pw;
+    const TY = tv => mt + ph - (tv - dy[0]) / (dy[1] - dy[0]) * ph;
+    const TY2 = tv => mt + ph - (tv - dy2[0]) / (dy2[1] - dy2[0]) * ph;
+    const X = v => TX(tf(v, xlog)), Y = v => TY(tf(v, ylog)), Y2 = v => TY2(v);
+    const f1 = v => (+v).toFixed(2);
+
+    const GRID = '#26324a', AXIS = '#3b4a68', TXT = '#cbd5e1';
+    let s = `<svg xmlns="${NS}" width="100%" height="${H}" viewBox="0 0 ${W} ${H}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" style="display:block">`;
+    s += `<defs><clipPath id="cp_${id}"><rect x="${ml}" y="${mt}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+    if (txt(layout.title)) s += `<text x="${ml}" y="22" fill="#e2e8f0" font-size="14" font-weight="600">${esc(txt(layout.title))}</text>`;
+
+    ticksFor(dx, xlog).forEach(([tv, lab]) => {
+      const px = f1(TX(tv));
+      s += `<line x1="${px}" y1="${mt}" x2="${px}" y2="${mt + ph}" stroke="${GRID}"/>`;
+      s += `<text x="${px}" y="${mt + ph + 16}" fill="${TXT}" font-size="11" text-anchor="middle">${esc(lab)}</text>`;
+    });
+    ticksFor(dy, ylog).forEach(([tv, lab]) => {
+      const py = f1(TY(tv));
+      s += `<line x1="${ml}" y1="${py}" x2="${ml + pw}" y2="${py}" stroke="${GRID}"/>`;
+      s += `<text x="${ml - 8}" y="${(+py + 4).toFixed(2)}" fill="${TXT}" font-size="11" text-anchor="end">${esc(lab)}</text>`;
+    });
+    if (has2) ticksFor(dy2, false).forEach(([tv, lab]) => {
+      const py = TY2(tv);
+      s += `<text x="${ml + pw + 8}" y="${(py + 4).toFixed(2)}" fill="${TXT}" font-size="11">${esc(lab)}</text>`;
+    });
+    s += `<line x1="${ml}" y1="${mt + ph}" x2="${ml + pw}" y2="${mt + ph}" stroke="${AXIS}"/><line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt + ph}" stroke="${AXIS}"/>`;
+    if (txt(xa.title)) s += `<text x="${ml + pw / 2}" y="${mt + ph + 36}" fill="${TXT}" font-size="12" text-anchor="middle">${esc(txt(xa.title))}</text>`;
+    if (txt(ya.title)) s += `<text transform="translate(15 ${mt + ph / 2}) rotate(-90)" fill="${TXT}" font-size="12" text-anchor="middle">${esc(txt(ya.title))}</text>`;
+    if (has2 && txt(y2a.title)) s += `<text transform="translate(${W - 13} ${mt + ph / 2}) rotate(90)" fill="${TXT}" font-size="12" text-anchor="middle">${esc(txt(y2a.title))}</text>`;
+
+    s += `<g clip-path="url(#cp_${id})">`;
+    (layout.shapes || []).forEach(sh => {
+      const fc = sh.fillcolor || 'none', lc = (sh.line && sh.line.color) || 'none', lw = (sh.line && sh.line.width) || 1;
+      if (sh.type === 'rect') {
+        const x0 = X(sh.x0), x1 = X(sh.x1), ya_ = Y(sh.y0), yb = Y(sh.y1);
+        s += `<rect x="${Math.min(x0, x1).toFixed(2)}" y="${Math.min(ya_, yb).toFixed(2)}" width="${Math.abs(x1 - x0).toFixed(2)}" height="${Math.abs(yb - ya_).toFixed(2)}" fill="${fc}" stroke="${lc}" stroke-width="${lw}"/>`;
+      } else if (sh.type === 'path') {
+        const pts = [];
+        sh.path.replace(/[ML]\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)/g, (m, a, b) => { pts.push(f1(X(+a)) + ',' + f1(Y(+b))); return m; });
+        s += `<polygon points="${pts.join(' ')}" fill="${fc}" stroke="${lc}" stroke-width="${lw}"/>`;
+      }
+    });
+    traces.forEach(t => {
+      const sec = t.yaxis === 'y2', FY = sec ? Y2 : Y, lg = sec ? false : ylog;
+      const mode = t.mode || 'lines';
+      const col = (t.line && t.line.color) || '#38bdf8', lw = (t.line && t.line.width) || 2;
+      const dash = t.line && t.line.dash === 'dash' ? '7 5' : t.line && t.line.dash === 'dot' ? '2 4' : '';
+      const pts = [], raw = [];
+      for (let i = 0; i < t.x.length; i++) {
+        const x = t.x[i], y = t.y[i];
+        if (!isFinite(x) || !isFinite(y) || (xlog && x <= 0) || (lg && y <= 0)) continue;
+        pts.push([X(x), FY(y)]); raw.push([x, y]);
+      }
+      if (!pts.length) return;
+      if (t.fill === 'tozeroy') {
+        const base = Math.min(mt + ph, Math.max(mt, sec ? Y2(0) : (ylog ? mt + ph : Y(0))));
+        const poly = pts.map(p => f1(p[0]) + ',' + f1(p[1])).join(' ') + ` ${f1(pts[pts.length - 1][0])},${f1(base)} ${f1(pts[0][0])},${f1(base)}`;
+        s += `<polygon points="${poly}" fill="${t.fillcolor || 'rgba(56,189,248,0.2)'}" stroke="none"/>`;
+      }
+      if (mode.indexOf('lines') >= 0 && pts.length > 1) {
+        s += `<polyline points="${pts.map(p => f1(p[0]) + ',' + f1(p[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${lw}" stroke-linejoin="round" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+      }
+      if (mode.indexOf('markers') >= 0) {
+        const mc = (t.marker && t.marker.color) || col, ms = (t.marker && t.marker.size) || 6;
+        const star = t.marker && t.marker.symbol === 'star';
+        pts.forEach((p, i) => {
+          const tip = `<title>${esc(t.name || '')} (${num(raw[i][0])} ; ${num(raw[i][1])})</title>`;
+          if (star) {
+            const R = ms * 0.7, r = R * 0.45, q = [];
+            for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? r : R; q.push(f1(p[0] + rad * Math.cos(a)) + ',' + f1(p[1] + rad * Math.sin(a))); }
+            s += `<polygon points="${q.join(' ')}" fill="${mc}" stroke="#0b1220" stroke-width="1">${tip}</polygon>`;
+          } else {
+            s += `<circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${ms / 2}" fill="${mc}" stroke="#0b1220" stroke-width="1.5">${tip}</circle>`;
+          }
+        });
+      }
+    });
+    s += '</g>';
+
+    rows.forEach((r, ri) => {
+      const cy = mt + ph + 44 + ri * 20 + 8;
+      r.forEach(([t, off]) => {
+        const x0 = ml + off, mode = t.mode || 'lines';
+        const col = (t.line && t.line.color) || '#38bdf8', mc = (t.marker && t.marker.color) || col;
+        if (mode.indexOf('lines') >= 0) {
+          const dash = t.line && t.line.dash === 'dash' ? ' stroke-dasharray="5 3"' : '';
+          s += `<line x1="${x0}" y1="${cy}" x2="${x0 + 22}" y2="${cy}" stroke="${col}" stroke-width="3"${dash}/>`;
+        }
+        if (mode.indexOf('markers') >= 0) s += `<circle cx="${x0 + 11}" cy="${cy}" r="4.5" fill="${mc}" stroke="#0b1220" stroke-width="1"/>`;
+        s += `<text x="${x0 + 28}" y="${cy + 4}" fill="${TXT}" font-size="11.5">${esc(t.name)}</text>`;
+      });
+    });
+    s += '</svg>';
+    el.innerHTML = s;
+  }
+
+  let timer;
+  window.addEventListener('resize', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => Object.keys(store).forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.clientWidth > 0) render(id, store[id][0], store[id][1]);
+    }), 150);
+  });
+  return { react: render, newPlot: render };
+})();
+
+(function () {
+  const { climb, polar, integrate, fuel, wing } = Calc;
+  const fmt = (x, d = 2) => x.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const range = (a, b, n) => Array.from({ length: n }, (_, i) => a + (b - a) * i / (n - 1));
+  const CFG = { displayModeBar: false, responsive: true };
+  const AX = { gridcolor: '#26324a', zerolinecolor: '#3b4a68', linecolor: '#3b4a68' };
+  const C = { a: '#38bdf8', b: '#fbbf24', c: '#34d399', r: '#f87171' };
+
+  function L(o) {
+    const out = Object.assign({
+      paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#cbd5e1', size: 12 }, margin: { l: 58, r: 18, t: 40, b: 50 },
+      legend: { orientation: 'h', y: -0.28 }, height: 340
+    }, o);
+    out.xaxis = Object.assign({}, AX, o.xaxis || {});
+    out.yaxis = Object.assign({}, AX, o.yaxis || {});
+    if (o.yaxis2) out.yaxis2 = Object.assign({}, AX, o.yaxis2, { showgrid: false });
+    if (o.title) out.title = { text: o.title, font: { size: 14 } };
+    return out;
+  }
+  function setRes(id, items) {
+    document.getElementById(id).innerHTML = items.map(([l, v]) => `<div><small>${l}</small><strong>${v}</strong></div>`).join('');
+  }
+  function build(boxId, defs, onChange) {
+    const box = document.getElementById(boxId), wraps = {};
+    defs.forEach(d => {
+      const w = document.createElement('div'); w.className = 'ctl';
+      if (d.type === 'select') {
+        w.innerHTML = `<label><span>${d.label}</span></label><select id="${d.id}">${d.options.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`;
+      } else {
+        w.innerHTML = `<label><span>${d.label}</span><b id="${d.id}_v"></b></label><input type="range" id="${d.id}" min="${d.min}" max="${d.max}" step="${d.step}" value="${d.value}">`;
+      }
+      box.appendChild(w); wraps[d.id] = w;
+    });
+    const val = id => { const e = document.getElementById(id); return e.tagName === 'SELECT' ? e.value : parseFloat(e.value); };
+    const refresh = () => defs.forEach(d => {
+      if (d.type !== 'select') document.getElementById(d.id + '_v').textContent = fmt(val(d.id), d.dec == null ? 2 : d.dec) + (d.unit ? ' ' + d.unit : '');
+    });
+    box.addEventListener('input', () => { refresh(); onChange(); });
+    refresh();
+    return { val, wraps };
+  }
+
+  /* ---------- SIM 1 ---------- */
+  const k1 = build('c1', [
+    { id: 'H1', label: 'Techo asintótico H', min: 10000, max: 45000, step: 500, value: 20000, dec: 0, unit: 'ft' },
+    { id: 'tau1', label: 'Constante de tiempo τ', min: 5, max: 40, step: 1, value: 18, dec: 0, unit: 'min' },
+    { id: 't01', label: 'Instante t₀', min: 0, max: 60, step: 0.5, value: 10, dec: 1, unit: 'min' },
+    { id: 'dt1', label: 'Incremento Δt (secante)', min: 0.05, max: 30, step: 0.05, value: 10, dec: 2, unit: 'min' }
+  ], () => render1());
+  function render1() {
+    const H = k1.val('H1'), tau = k1.val('tau1'), t0 = k1.val('t01'), dt = k1.val('dt1');
+    const T = 70, ts = range(0, T, 281);
+    const h0 = climb.h(t0, H, tau), m = climb.dh(t0, H, tau);
+    const t1 = t0 + dt, h1 = climb.h(t1, H, tau), ms = (h1 - h0) / dt;
+    const tx = [Math.max(0, t0 - 20), Math.min(T, t0 + 20)];
+    Plotly.react('p1a', [
+      { x: ts, y: ts.map(t => climb.h(t, H, tau)), name: 'h(t)', mode: 'lines', line: { color: C.a, width: 3 } },
+      { x: tx, y: tx.map(t => h0 + m * (t - t0)), name: 'Tangente: h′(t₀)', mode: 'lines', line: { color: C.c, width: 2 } },
+      { x: [t0, t1], y: [h0, h1], name: 'Secante (Δt)', mode: 'lines+markers', line: { color: C.b, width: 2, dash: 'dash' } },
+      { x: [t0], y: [h0], mode: 'markers', marker: { size: 10, color: C.r }, showlegend: false }
+    ], L({ title: 'Altitud h(t)', xaxis: { title: 'Tiempo (min)', range: [0, T] }, yaxis: { title: 'Altitud (ft)', range: [0, Math.max(H, h1) * 1.08] } }), CFG);
+    Plotly.react('p1b', [
+      { x: ts, y: ts.map(t => climb.dh(t, H, tau)), name: 'h′(t) = ROC', mode: 'lines', line: { color: C.c, width: 3 } },
+      { x: [t0, t1], y: [ms, ms], name: 'Pendiente media (secante)', mode: 'lines', line: { color: C.b, width: 2, dash: 'dash' } },
+      { x: [t0], y: [m], mode: 'markers', marker: { size: 10, color: C.r }, name: 'ROC en t₀' }
+    ], L({ title: 'Tasa de ascenso h′(t)', xaxis: { title: 'Tiempo (min)', range: [0, T] }, yaxis: { title: 'ft/min', rangemode: 'tozero' } }), CFG);
+    setRes('r1', [
+      ['Altitud h(t₀)', fmt(h0, 0) + ' ft'],
+      ['ROC exacta h′(t₀)', fmt(m, 0) + ' ft/min'],
+      ['ROC en m/s', fmt(m * 0.00508, 2) + ' m/s'],
+      ['Pendiente secante', fmt(ms, 0) + ' ft/min'],
+      ['Error secante vs. derivada', fmt(Math.abs(ms - m) / m * 100, 2) + ' %'],
+      ['Alcanza 95 % del techo', fmt(3 * tau, 0) + ' min']
+    ]);
+  }
+
+  /* ---------- SIM 2 ---------- */
+  const k2 = build('c2', [
+    { id: 'cd0', label: 'Resistencia parásita C_D0', min: 0.015, max: 0.05, step: 0.001, value: 0.032, dec: 3 },
+    { id: 'AR', label: 'Alargamiento AR', min: 5, max: 20, step: 0.1, value: 10.2, dec: 1 },
+    { id: 'e', label: 'Eficiencia de Oswald e', min: 0.6, max: 0.95, step: 0.01, value: 0.75, dec: 2 },
+    { id: 'cl', label: 'C_L de exploración', min: 0.05, max: 1.6, step: 0.01, value: 0.4, dec: 2 },
+    { id: 'alt', label: 'Altura para planeo', min: 500, max: 10000, step: 100, value: 3000, dec: 0, unit: 'm' }
+  ], () => render2());
+  function render2() {
+    const cd0 = k2.val('cd0'), AR = k2.val('AR'), e = k2.val('e'), cl = k2.val('cl'), alt = k2.val('alt');
+    const k = polar.k(AR, e), clo = polar.clOpt(cd0, k), ldm = polar.ldMax(cd0, k);
+    const xs = range(0.02, 1.6, 300), ldc = polar.ld(cl, cd0, k), sl = polar.dld(cl, cd0, k);
+    const seg = [Math.max(0.02, cl - 0.3), Math.min(1.6, cl + 0.3)];
+    Plotly.react('p2a', [
+      { x: xs, y: xs.map(x => polar.ld(x, cd0, k)), name: 'L/D', mode: 'lines', line: { color: C.a, width: 3 } },
+      { x: seg, y: seg.map(x => ldc + sl * (x - cl)), name: 'Tangente en C_L', mode: 'lines', line: { color: C.c, width: 2 } },
+      { x: [cl], y: [ldc], mode: 'markers', marker: { size: 10, color: C.r }, name: 'C_L elegido' },
+      { x: [clo], y: [ldm], mode: 'markers', marker: { size: 12, color: C.b, symbol: 'star' }, name: 'Máximo' }
+    ], L({ title: 'Eficiencia aerodinámica L/D', xaxis: { title: 'C_L' }, yaxis: { title: 'L/D', rangemode: 'tozero' } }), CFG);
+    Plotly.react('p2b', [
+      { x: xs, y: xs.map(x => polar.dld(x, cd0, k)), name: 'd(L/D)/dC_L', mode: 'lines', line: { color: C.c, width: 3 } },
+      { x: [cl], y: [sl], mode: 'markers', marker: { size: 10, color: C.r }, name: 'C_L elegido' },
+      { x: [clo], y: [0], mode: 'markers', marker: { size: 12, color: C.b, symbol: 'star' }, name: 'Raíz: C_L*' }
+    ], L({ title: 'Derivada: se anula en el máximo', xaxis: { title: 'C_L' }, yaxis: { title: 'd(L/D)/dC_L' } }), CFG);
+    setRes('r2', [
+      ['k = 1/(π·e·AR)', fmt(k, 4)],
+      ['C_L* óptimo', fmt(clo, 3)],
+      ['(L/D) máximo', fmt(ldm, 2)],
+      ['C_D en el óptimo', fmt(2 * cd0, 3) + ' (= 2·C_D0)'],
+      ['L/D en C_L elegido', fmt(ldc, 2)],
+      ['d(L/D)/dC_L ahí', fmt(sl, 3)],
+      ['Planeo máx. desde ' + fmt(alt, 0) + ' m', fmt(alt * ldm / 1000, 1) + ' km']
+    ]);
+  }
+
+  /* ---------- SIM 3 ---------- */
+  const k3 = build('c3', [
+    { id: 'Fcl', label: 'Flujo inicial (ascenso) F_cl', min: 0.4, max: 2, step: 0.05, value: 0.85, dec: 2, unit: 'kg/min' },
+    { id: 'Fcr', label: 'Flujo de crucero F_cr', min: 0.3, max: 1.2, step: 0.01, value: 0.55, dec: 2, unit: 'kg/min' },
+    { id: 'tau3', label: 'Constante τ', min: 3, max: 30, step: 1, value: 10, dec: 0, unit: 'min' },
+    { id: 'T3', label: 'Duración de la misión T', min: 30, max: 360, step: 5, value: 120, dec: 0, unit: 'min' },
+    { id: 'n3', label: 'Subintervalos n (par)', min: 2, max: 100, step: 2, value: 8, dec: 0 },
+    { id: 'm3', type: 'select', label: 'Método numérico', options: [['left', 'Riemann izquierda'], ['right', 'Riemann derecha'], ['mid', 'Punto medio'], ['trap', 'Trapecio'], ['simpson', 'Simpson 1/3']] }
+  ], () => render3());
+  document.getElementById('m3').value = 'trap';
+  function render3() {
+    const Fcl = k3.val('Fcl'), Fcr = k3.val('Fcr'), tau = k3.val('tau3'), T = k3.val('T3'), n = k3.val('n3'), m = k3.val('m3');
+    const f = t => fuel.flow(t, Fcl, Fcr, tau), ts = range(0, T, 300), h = T / n;
+    const traces = [{ x: ts, y: ts.map(f), name: 'ṁ(t)', mode: 'lines', line: { color: C.a, width: 3 } }];
+    const shapes = [], fill = 'rgba(251,191,36,0.28)', ln = { color: C.b, width: 1 };
+    if (m === 'left' || m === 'right' || m === 'mid') {
+      for (let i = 0; i < n; i++) {
+        const x0 = i * h, x1 = x0 + h, xs = m === 'left' ? x0 : m === 'right' ? x1 : x0 + h / 2;
+        shapes.push({ type: 'rect', x0, x1, y0: 0, y1: f(xs), fillcolor: fill, line: ln });
+      }
+    } else if (m === 'trap') {
+      for (let i = 0; i < n; i++) {
+        const x0 = i * h, x1 = x0 + h;
+        shapes.push({ type: 'path', path: `M ${x0},0 L ${x0},${f(x0)} L ${x1},${f(x1)} L ${x1},0 Z`, fillcolor: fill, line: ln });
+      }
+    } else {
+      const px = [], py = [];
+      for (let q = 0; q < n / 2; q++) {
+        const x0 = 2 * q * h, x1 = x0 + h, x2 = x0 + 2 * h, y0 = f(x0), y1 = f(x1), y2 = f(x2);
+        for (let s = 0; s <= 12; s++) {
+          const x = x0 + 2 * h * s / 12;
+          const l0 = (x - x1) * (x - x2) / ((x0 - x1) * (x0 - x2));
+          const l1 = (x - x0) * (x - x2) / ((x1 - x0) * (x1 - x2));
+          const l2 = (x - x0) * (x - x1) / ((x2 - x0) * (x2 - x1));
+          px.push(x); py.push(y0 * l0 + y1 * l1 + y2 * l2);
+        }
+      }
+      traces.push({ x: px, y: py, name: 'Parábolas de Simpson', mode: 'lines', fill: 'tozeroy', fillcolor: fill, line: { color: C.b, width: 1.5 } });
+    }
+    const lay = L({ title: 'Flujo de combustible ṁ(t) y aproximación', xaxis: { title: 'Tiempo (min)' }, yaxis: { title: 'kg/min', rangemode: 'tozero' } });
+    lay.shapes = shapes;
+    Plotly.react('p3a', traces, lay, CFG);
+
+    const exact = fuel.exact(T, Fcl, Fcr, tau), num = integrate(m, f, 0, T, n), err = Math.abs(num - exact);
+    const ns = [], es = [];
+    for (let q = 2; q <= 100; q += 2) { ns.push(q); es.push(Math.max(Math.abs(integrate(m, f, 0, T, q) - exact), 1e-12)); }
+    Plotly.react('p3b', [
+      { x: ns, y: es, name: 'Error absoluto', mode: 'lines', line: { color: C.r, width: 3 } },
+      { x: [n], y: [Math.max(err, 1e-12)], mode: 'markers', marker: { size: 11, color: C.b }, name: 'n actual' }
+    ], L({ title: 'Convergencia del método (escala log)', xaxis: { title: 'n subintervalos', type: 'log' }, yaxis: { title: 'Error (kg)', type: 'log' } }), CFG);
+    setRes('r3', [
+      ['Aproximación numérica', fmt(num, 2) + ' kg'],
+      ['Integral exacta', fmt(exact, 2) + ' kg'],
+      ['Error absoluto', fmt(err, 4) + ' kg'],
+      ['Error relativo', fmt(err / exact * 100, 4) + ' %'],
+      ['Volumen (Avgas 100LL, 0,72 kg/L)', fmt(exact / 0.72, 1) + ' L']
+    ]);
+  }
+
+  /* ---------- SIM 4 ---------- */
+  const k4 = build('c4', [
+    { id: 'b4', label: 'Envergadura b', min: 8, max: 40, step: 0.1, value: 8.8, dec: 1, unit: 'm' },
+    { id: 'mass4', label: 'Masa del avión', min: 500, max: 50000, step: 2, value: 998, dec: 0, unit: 'kg' },
+    { id: 'nf4', label: 'Factor de carga n', min: 1, max: 6, step: 0.1, value: 1, dec: 1, unit: 'g' },
+    { id: 'dist4', type: 'select', label: 'Distribución de sustentación', options: [['ell', 'Elíptica'], ['rect', 'Rectangular'], ['trap', 'Lineal (taper)']] },
+    { id: 'lam4', label: 'Carga en punta / carga en raíz', min: 0, max: 1, step: 0.05, value: 0.4, dec: 2 },
+    { id: 'y04', label: 'Estación y₀ (0 = raíz, 100 % = punta)', min: 0, max: 100, step: 1, value: 0, dec: 0, unit: '%' }
+  ], () => render4());
+  function render4() {
+    const b = k4.val('b4'), mass = k4.val('mass4'), nf = k4.val('nf4'), type = k4.val('dist4'), lam = k4.val('lam4'), pc = k4.val('y04');
+    k4.wraps['lam4'].style.display = type === 'trap' ? '' : 'none';
+    const w = wing(type, lam, b, mass, nf);
+    const i0 = Math.min(w.N, Math.round(pc / 100 * w.N)), y0 = w.y[i0];
+    const yy = w.y.slice().reverse().map(v => -v).concat(w.y.slice(1));
+    const LL = w.Lp.slice().reverse().concat(w.Lp.slice(1)).map(v => v / 1000);
+    Plotly.react('p4a', [
+      { x: yy, y: LL, name: "L′(y)", mode: 'lines', fill: 'tozeroy', fillcolor: 'rgba(56,189,248,0.22)', line: { color: C.a, width: 3 } },
+      { x: w.y.slice(i0), y: w.Lp.slice(i0).map(v => v / 1000), name: 'Región y₀ → punta', mode: 'lines', fill: 'tozeroy', fillcolor: 'rgba(251,191,36,0.35)', line: { color: C.b, width: 2 } }
+    ], L({ title: 'Sustentación por unidad de envergadura', xaxis: { title: 'Posición y (m)' }, yaxis: { title: 'kN/m', rangemode: 'tozero' } }), CFG);
+    Plotly.react('p4b', [
+      { x: w.y, y: w.V.map(v => v / 1000), name: 'Cortante V(y) [kN]', mode: 'lines', line: { color: C.c, width: 3 } },
+      { x: w.y, y: w.M.map(v => v / 1000), name: 'Momento M(y) [kN·m]', mode: 'lines', yaxis: 'y2', line: { color: C.r, width: 3 } },
+      { x: [y0], y: [w.V[i0] / 1000], mode: 'markers', marker: { size: 10, color: C.c }, showlegend: false },
+      { x: [y0], y: [w.M[i0] / 1000], mode: 'markers', yaxis: 'y2', marker: { size: 10, color: C.r }, showlegend: false }
+    ], L({ title: 'Cortante y momento flector a lo largo del semiala', xaxis: { title: 'Distancia desde la raíz (m)' }, yaxis: { title: 'Cortante (kN)', rangemode: 'tozero' }, yaxis2: { title: 'Momento (kN·m)', overlaying: 'y', side: 'right', rangemode: 'tozero' } }), CFG);
+    const half = w.Ltot / 2;
+    const items = [
+      ['Sustentación total n·W', fmt(w.Ltot / 1000, 2) + ' kN'],
+      ['Carga máx. L₀', fmt(w.L0 / 1000, 2) + ' kN/m'],
+      ['Momento en la raíz', fmt(w.Mroot / 1000, 2) + ' kN·m'],
+      ['Centro de presión', fmt(w.ycp, 2) + ' m (' + fmt(w.ycp / w.half * 100, 1) + ' % semiala)'],
+      ['V(y₀)', fmt(w.V[i0] / 1000, 2) + ' kN'],
+      ['M(y₀)', fmt(w.M[i0] / 1000, 2) + ' kN·m']
+    ];
+    if (type === 'ell') {
+      const Man = w.Ltot * b / (3 * Math.PI);
+      items.push(['Control analítico n·W·b/(3π)', fmt(Man / 1000, 2) + ' kN·m']);
+      items.push(['Integral numérica vs. analítica', fmt(Math.abs(w.Mnum - Man) / Man * 100, 3) + ' % de diferencia']);
+    }
+    setRes('r4', items);
+    const rows = [['ell', 'Elíptica'], ['rect', 'Rectangular'], ['trap', 'Lineal (taper = ' + fmt(lam, 2) + ')']].map(([t, name]) => {
+      const q = wing(t, lam, b, mass, nf);
+      return `<tr><td>${name}</td><td>${fmt(q.Mroot / 1000, 2)} kN·m</td><td>${fmt(q.ycp / q.half * 100, 1)} %</td></tr>`;
+    }).join('');
+    document.getElementById('t4').innerHTML = `<table><tr><th>Distribución</th><th>M raíz</th><th>C.P. (% semiala)</th></tr>${rows}</table>`;
+  }
+
+  /* ---------- Pestañas ---------- */
+  const renders = { s1: render1, s2: render2, s3: render3, s4: render4 };
+  const btns = document.querySelectorAll('nav button');
+  btns.forEach(btn => btn.addEventListener('click', () => {
+    btns.forEach(x => x.classList.toggle('on', x === btn));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === btn.dataset.p));
+    renders[btn.dataset.p]();
+  }));
+  render1();
+})();
+}
+</script>
+</body>
+</html>
